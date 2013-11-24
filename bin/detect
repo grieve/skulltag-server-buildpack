@@ -1,0 +1,9 @@
+#!/bin/sh
+
+# app requires a doom2.wad and server.ini to be valid
+if [ -f $1/server.ini -a \( -f $1/doom2.wad -o -f $1/doom2.WAD -o -f $1/DOOM2.WAD \) ]; then
+    echo "Skulltag Server"
+    exit 0
+else
+    exit 1
+fi

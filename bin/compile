@@ -1,0 +1,64 @@
+#!/bin/sh
+
+indent() {
+    sed -u 's/^/       /'
+}
+
+arrow() {
+    sed -u 's/^/-----> /'
+}
+
+echo "Skulltag server found" | arrow
+
+
+echo "Downloading skulltag binaries" | arrow
+echo "Fetching base" | indent
+if [ ! -f $2/base.tar.bz2 ]; then
+    wget -qO $2/base.tar.bz2 http://www.skulltag.com/download/files/release/st-v098d_linux-base.tar.bz2
+fi
+echo "Fetching platform specific" | indent
+if [ ! -f $2/64bit.tar.bz2 ]; then
+    wget -qO $2/64bit.tar.bz2 http://www.skulltag.com/download/files/release/st-v098d_linux-x86_64.tar.bz2
+fi
+
+echo "Installing skulltag" | arrow
+tar xjvf $2/base.tar.bz2 -C $1 | indent
+tar xjvf $2/64bit.tar.bz2 -C $1 | indent
+
+
+echo "Installing dependencies" | arrow
+apt-get -q install libjpeg62 2>&1| indent
+
+echo "Preparing runtime configuration" | arrow
+EXEC_CMD="$1/skulltag-server -host -private -port 10666"
+
+if [ -f $1/server.ini ]; then
+    echo "Custom server.ini detected"
+    EXEC_CMD="$EXEC_CMD +exec server.ini"
+else
+    echo "No server.ini found, using defaults"
+fi | indent
+
+if [ -f $1/pwads.ini ]; then
+    echo "Using pwads specified in pwads.ini"
+else
+    echo "No pwads specified, using all found in pwads/"
+    od=`pwd`
+    cd $1
+    for WAD in pwads/*.wad; do
+        if [ "$WAD" != "pwads/*.wad" ]; then
+            EXEC_CMD="$EXEC_CMD -file $WAD";
+        fi
+    done
+    for WAD in pwads/*.WAD; do
+        if [ "$WAD" != "pwads/*.WAD" ]; then
+            EXEC_CMD="$EXEC_CMD -file $WAD";
+        fi
+    done
+    cd $od
+fi | indent
+
+
+
+echo "Saving runtime configuration" | arrow
+echo $EXEC_CMD > $1/run_server.sh
