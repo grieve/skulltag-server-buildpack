@@ -1,8 +1,5 @@
 #!/bin/sh
 
 cat << EOF
-
-defaults_process_types:
-    web: sh run_server.sh
 EOF
 

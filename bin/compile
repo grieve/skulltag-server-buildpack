@@ -8,10 +8,21 @@ arrow() {
     sed -u 's/^/-----> /'
 }
 
-echo "Skulltag server found" | arrow
+mkdir -p $2/.tools/wget
+export PATH=/sbin:/usr/sbin:$PATH:$2/.tools/wget/bin
+
+echo "-----> Fetching and installing wget"
+cd $WGET_BUILD
+curl -O http://ftp.gnu.org/gnu/wget/wget-1.13.4.tar.bz2 >/dev/null 2>&1
+tar jxvf wget-1.13.4.tar.bz2 >/dev/null 2>&1
+cd wget-1.13.4
+./configure --prefix=$CACHE_DIR/.tools/wget --without-ssl >/dev/null 2>&1
+make >/dev/null 2>&1
+make install >/dev/null 2>&1
+echo "wget installed" | indent
 
 
-echo "Downloading skulltag binaries" | arrow
+echo "Fetching and installing skulltag binaries" | arrow
 echo "Fetching base" | indent
 if [ ! -f $2/base.tar.bz2 ]; then
     wget -qO $2/base.tar.bz2 http://www.skulltag.com/download/files/release/st-v098d_linux-base.tar.bz2
@@ -21,13 +32,15 @@ if [ ! -f $2/64bit.tar.bz2 ]; then
     wget -qO $2/64bit.tar.bz2 http://www.skulltag.com/download/files/release/st-v098d_linux-x86_64.tar.bz2
 fi
 
-echo "Installing skulltag" | arrow
-tar xjvf $2/base.tar.bz2 -C $1 | indent
-tar xjvf $2/64bit.tar.bz2 -C $1 | indent
+echo "Installing" | indent
+tar xjf $2/base.tar.bz2 -C $1
+tar xjf $2/64bit.tar.bz2 -C $1
+echo "Skulltag installed" | indent
 
 
 echo "Installing dependencies" | arrow
-apt-get -q install libjpeg62 2>&1| indent
+# Can't apt-get on heroku obviously idiot, going to statically link
+# apt-get -q install libjpeg62 2>&1| indent
 
 echo "Preparing runtime configuration" | arrow
 EXEC_CMD="$1/skulltag-server -host -private -port 10666"
@@ -61,4 +74,6 @@ fi | indent
 
 
 echo "Saving runtime configuration" | arrow
-echo $EXEC_CMD > $1/run_server.sh
+mkdir $1/bin
+echo $EXEC_CMD > $1/bin/skulltag
+chmod a+x $1/bin/skulltag
