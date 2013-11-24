@@ -1,4 +1,5 @@
 #!/bin/sh
+set -e
 
 ROOT_DIR=`pwd`
 BUILD_DIR=$1
@@ -12,18 +13,51 @@ arrow() {
     sed -u 's/^/-----> /'
 }
 
+
+mktmpdir() {
+    dir=$(mktemp -t fakesu-$1-XXXX)
+    rm -rf $dir
+    mkdir -p $dir
+    echo $dir
+}
+
+WGET_BUILD="$(mktmpdir wget)"
+DEBOOTSTRAP_BUILD="$(mktmpdir debootstrap)"
+FAKECHROOT_BUILD="$(mktmpdir fakechroot)"
+
+mkdir -p $BUILD_DIR/.tools/fakechroot
+mkdir -p $CACHE_DIR/.tools/debootstrap
+
+export PATH=/sbin:/usr/sbin:$PATH:$CACHE_DIR/.tools/debootstrap/usr/sbin:$BUILD_DIR/.tools/fakechroot/sbin:$BUILD_DIR/.tools/fakechroot/bin
+export DEBOOTSTRAP_DIR=$CACHE_DIR/.tools/debootstrap/usr/share/debootstrap
+
+echo "Fetching and installing debootstrap" | arrow
+echo "1" | indent
+cd $DEBOOTSTRAP_BUILD
+echo "2" | indent
+# temporary workaround until I find a way to pull from repos that doesn't explode
+curl -O http://ryangrieve.com/labs/debootstrap_1.0.38.tar.gz >/dev/null 2>&1
+echo "3" | indent
+tar zxvf debootstrap_1.0.38.tar.gz >/dev/null
+echo "4" | indent
+cd debootstrap
+echo "5" | indent
+DESTDIR=$CACHE_DIR/.tools/debootstrap fakeroot make >/dev/null
+echo "6" | indent
+DESTDIR=$CACHE_DIR/.tools/debootstrap fakeroot make install >/dev/null
+echo "7" | indent
+echo "debootstrap installed" | indent
+
 echo "Fetching and installing skulltag binaries" | arrow
 cd $CACHE_DIR
 
 echo "Fetching base" | indent
 if [ ! -f base.tar.bz2 ]; then
-    curl -O http://www.skulltag.com/download/files/release/st-v098d_linux-base.tar.bz2 > /dev/null 2>&1
-    mv st-v098d_linux-base.tar.bz2 base.tar.bz2
+    wget -O base.tar.bz2 http://www.skulltag.com/download/files/release/st-v098d_linux-base.tar.bz2 > /dev/null 2>&1
 fi
 echo "Fetching platform specific" | indent
 if [ ! -f 64bit.tar.bz2 ]; then
-    curl -O http://www.skulltag.com/download/files/release/st-v098d_linux-x86_64.tar.bz2 > /dev/null 2>&1
-    mv st-v098d_linux-x86_64.tar.bz2 64bit.tar.bz2
+    wget -O 64bit.tar.bz2 http://www.skulltag.com/download/files/release/st-v098d_linux-x86_64.tar.bz2 > /dev/null 2>&1
 fi
 
 echo "Installing" | indent
