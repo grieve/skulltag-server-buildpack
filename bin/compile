@@ -1,5 +1,9 @@
 #!/bin/sh
 
+ROOT_DIR=`pwd`
+BUILD_DIR=$1
+CACHE_DIR=$2
+
 indent() {
     sed -u 's/^/       /'
 }
@@ -8,34 +12,27 @@ arrow() {
     sed -u 's/^/-----> /'
 }
 
-mkdir -p $2/.tools/wget
-export PATH=/sbin:/usr/sbin:$PATH:$2/.tools/wget/bin
-
-echo "-----> Fetching and installing wget"
-cd $WGET_BUILD
-curl -O http://ftp.gnu.org/gnu/wget/wget-1.13.4.tar.bz2 >/dev/null 2>&1
-tar jxvf wget-1.13.4.tar.bz2 >/dev/null 2>&1
-cd wget-1.13.4
-./configure --prefix=$CACHE_DIR/.tools/wget --without-ssl >/dev/null 2>&1
-make >/dev/null 2>&1
-make install >/dev/null 2>&1
-echo "wget installed" | indent
-
-
 echo "Fetching and installing skulltag binaries" | arrow
+cd $CACHE_DIR
+
 echo "Fetching base" | indent
-if [ ! -f $2/base.tar.bz2 ]; then
-    wget -qO $2/base.tar.bz2 http://www.skulltag.com/download/files/release/st-v098d_linux-base.tar.bz2
+if [ ! -f base.tar.bz2 ]; then
+    curl -O http://www.skulltag.com/download/files/release/st-v098d_linux-base.tar.bz2 > /dev/null 2>&1
+    mv st-v098d_linux-base.tar.bz2 base.tar.bz2
 fi
 echo "Fetching platform specific" | indent
-if [ ! -f $2/64bit.tar.bz2 ]; then
-    wget -qO $2/64bit.tar.bz2 http://www.skulltag.com/download/files/release/st-v098d_linux-x86_64.tar.bz2
+if [ ! -f 64bit.tar.bz2 ]; then
+    curl -O http://www.skulltag.com/download/files/release/st-v098d_linux-x86_64.tar.bz2 > /dev/null 2>&1
+    mv st-v098d_linux-x86_64.tar.bz2 64bit.tar.bz2
 fi
 
 echo "Installing" | indent
-tar xjf $2/base.tar.bz2 -C $1
-tar xjf $2/64bit.tar.bz2 -C $1
+tar xjf base.tar.bz2 -C $BUILD_DIR
+tar xjf 64bit.tar.bz2 -C $BUILD_DIR
+
+cd $ROOT_DIR
 echo "Skulltag installed" | indent
+
 
 
 echo "Installing dependencies" | arrow
@@ -43,21 +40,21 @@ echo "Installing dependencies" | arrow
 # apt-get -q install libjpeg62 2>&1| indent
 
 echo "Preparing runtime configuration" | arrow
-EXEC_CMD="$1/skulltag-server -host -private -port 10666"
+EXEC_CMD="/app/skulltag-server -host -private -port 10666"
 
-if [ -f $1/server.ini ]; then
+if [ -f $BUILD_DIR/server.ini ]; then
     echo "Custom server.ini detected"
     EXEC_CMD="$EXEC_CMD +exec server.ini"
 else
     echo "No server.ini found, using defaults"
 fi | indent
 
-if [ -f $1/pwads.ini ]; then
+if [ -f $BUILD_DIR/pwads.ini ]; then
     echo "Using pwads specified in pwads.ini"
 else
     echo "No pwads specified, using all found in pwads/"
     od=`pwd`
-    cd $1
+    cd $BUILD_DIR
     for WAD in pwads/*.wad; do
         if [ "$WAD" != "pwads/*.wad" ]; then
             EXEC_CMD="$EXEC_CMD -file $WAD";
@@ -74,6 +71,6 @@ fi | indent
 
 
 echo "Saving runtime configuration" | arrow
-mkdir $1/bin
-echo $EXEC_CMD > $1/bin/skulltag
-chmod a+x $1/bin/skulltag
+mkdir $BUILD_DIR/bin
+echo $EXEC_CMD > $BUILD_DIR/bin/skulltag
+chmod a+x $BUILD_DIR/bin/skulltag
